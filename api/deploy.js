@@ -3,6 +3,9 @@ export default async function handler(req, res) {
     
     const { name, sid, num } = req.body;
 
+    // ✅ YOUR UNIQUE OWNER ID ADDED
+    const OWNER_ID = "usr-d6h99u9aae7s73bpck90"; 
+
     try {
         const response = await fetch('https://api.render.com/v1/services', {
             method: 'POST',
@@ -12,7 +15,8 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 "type": "web_service",
-                "name": `pop-${name.toLowerCase().replace(/[^a-z0-9]/g, '')}-${Math.floor(Math.random()*999)}`,
+                "name": `pop-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.floor(Math.random()*999)}`,
+                "ownerId": OWNER_ID, 
                 "repo": "https://github.com/hostdeployment-bit/NEEBASE",
                 "envVars": [
                     { "key": "SESSION_ID", "value": sid },
