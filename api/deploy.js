@@ -8,14 +8,14 @@ export default async function handler(req, res) {
     const MONGO_URI = "mongodb+srv://popkid:taracha2004%3F@cluster0.i50ot50.mongodb.net/?retryWrites=true&w=majority";
 
     try {
-        // --- STEP 1: AUTO-FIND OWNER ID (The fix that worked!) ---
+        // --- STEP 1: AUTO-FIND OWNER ID ---
         const ownerRes = await fetch('https://api.render.com/v1/owners', {
             headers: { 'Authorization': `Bearer ${RENDER_API_KEY}` }
         });
         const owners = await ownerRes.json();
         const REAL_OWNER_ID = owners[0].owner.id;
 
-        // --- STEP 2: DEPLOY WITH NEW SERVICE DETAILS FORMAT ---
+        // --- STEP 2: DEPLOY WITH ENV-SPECIFIC DETAILS ---
         const renderResponse = await fetch('https://api.render.com/v1/services', {
             method: 'POST',
             headers: {
@@ -31,14 +31,18 @@ export default async function handler(req, res) {
                 "serviceDetails": {
                     "env": "node",
                     "plan": "free",
-                    "buildCommand": "npm install",
-                    "startCommand": "node index.js",
-                    "envVars": [
-                        { "key": "SESSION_ID", "value": sid },
-                        { "key": "OWNER_NUMBER", "value": num },
-                        { "key": "PORT", "value": "8080" }
-                    ]
-                }
+                    "region": "oregon",
+                    "numInstances": 1,
+                    "envSpecificDetails": {
+                        "buildCommand": "npm install",
+                        "startCommand": "node index.js"
+                    }
+                },
+                "envVars": [
+                    { "key": "SESSION_ID", "value": sid },
+                    { "key": "OWNER_NUMBER", "value": num },
+                    { "key": "PORT", "value": "8080" }
+                ]
             })
         });
 
@@ -55,7 +59,7 @@ export default async function handler(req, res) {
                 await client.close();
             } catch (dbErr) { console.error("DB Error:", dbErr); }
 
-            return res.status(200).json({ success: true, message: "POPKID-MD IS LIVE! ✅" });
+            return res.status(200).json({ success: true, message: "POPKID-HOST: DEPLOYMENT SUCCESS ✅" });
         } else {
             return res.status(renderResponse.status).json({ success: false, error: renderData.message });
         }
