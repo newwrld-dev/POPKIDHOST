@@ -8,18 +8,14 @@ export default async function handler(req, res) {
     const MONGO_URI = "mongodb+srv://popkid:taracha2004%3F@cluster0.i50ot50.mongodb.net/?retryWrites=true&w=majority";
 
     try {
-        // --- STEP 1: AUTO-FIND YOUR OWNER ID ---
+        // --- STEP 1: AUTO-FIND OWNER ID (The fix that worked!) ---
         const ownerRes = await fetch('https://api.render.com/v1/owners', {
             headers: { 'Authorization': `Bearer ${RENDER_API_KEY}` }
         });
         const owners = await ownerRes.json();
-        
-        // This picks the first available ID (usually your personal one)
-        if (!owners || owners.length === 0) throw new Error("Could not find a Render Owner ID");
         const REAL_OWNER_ID = owners[0].owner.id;
-        console.log("Found Owner ID:", REAL_OWNER_ID);
 
-        // --- STEP 2: DEPLOY TO RENDER ---
+        // --- STEP 2: DEPLOY WITH NEW SERVICE DETAILS FORMAT ---
         const renderResponse = await fetch('https://api.render.com/v1/services', {
             method: 'POST',
             headers: {
@@ -31,19 +27,25 @@ export default async function handler(req, res) {
                 "name": `pop-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.floor(Math.random()*999)}`,
                 "ownerId": REAL_OWNER_ID,
                 "repo": "https://github.com/hostdeployment-bit/NEEBASE",
-                "envVars": [
-                    { "key": "SESSION_ID", "value": sid },
-                    { "key": "OWNER_NUMBER", "value": num },
-                    { "key": "PORT", "value": "8080" }
-                ],
-                "plan": "free"
+                "autoDeploy": "yes",
+                "serviceDetails": {
+                    "env": "node",
+                    "plan": "free",
+                    "buildCommand": "npm install",
+                    "startCommand": "node index.js",
+                    "envVars": [
+                        { "key": "SESSION_ID", "value": sid },
+                        { "key": "OWNER_NUMBER", "value": num },
+                        { "key": "PORT", "value": "8080" }
+                    ]
+                }
             })
         });
 
         const renderData = await renderResponse.json();
 
         if (renderResponse.ok) {
-            // --- STEP 3: SAVE TO MONGODB ---
+            // --- STEP 3: LOG TO MONGODB ---
             try {
                 const client = new MongoClient(MONGO_URI);
                 await client.connect();
@@ -51,9 +53,9 @@ export default async function handler(req, res) {
                     nickname: name, phoneNumber: num, sessionId: sid, date: new Date()
                 });
                 await client.close();
-            } catch (dbErr) { console.error("DB Log Error:", dbErr); }
+            } catch (dbErr) { console.error("DB Error:", dbErr); }
 
-            return res.status(200).json({ success: true, message: "Bot Launched Successfully!" });
+            return res.status(200).json({ success: true, message: "POPKID-MD IS LIVE! ✅" });
         } else {
             return res.status(renderResponse.status).json({ success: false, error: renderData.message });
         }
