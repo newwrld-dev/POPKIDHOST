@@ -4,14 +4,22 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
     
     const { name, sid, num } = req.body;
-
-    // 🔑 YOUR MASTER KEYS
     const RENDER_API_KEY = "rnd_lwaqihFiMRHlcku0qBDNrjMIc6at";
-    const OWNER_ID = "usr-d6h99u9aae7s73bpck90".trim();
     const MONGO_URI = "mongodb+srv://popkid:taracha2004%3F@cluster0.i50ot50.mongodb.net/?retryWrites=true&w=majority";
 
     try {
-        // --- 1. DEPLOY TO RENDER ---
+        // --- STEP 1: AUTO-FIND YOUR OWNER ID ---
+        const ownerRes = await fetch('https://api.render.com/v1/owners', {
+            headers: { 'Authorization': `Bearer ${RENDER_API_KEY}` }
+        });
+        const owners = await ownerRes.json();
+        
+        // This picks the first available ID (usually your personal one)
+        if (!owners || owners.length === 0) throw new Error("Could not find a Render Owner ID");
+        const REAL_OWNER_ID = owners[0].owner.id;
+        console.log("Found Owner ID:", REAL_OWNER_ID);
+
+        // --- STEP 2: DEPLOY TO RENDER ---
         const renderResponse = await fetch('https://api.render.com/v1/services', {
             method: 'POST',
             headers: {
@@ -21,7 +29,7 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 "type": "web_service",
                 "name": `pop-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Math.floor(Math.random()*999)}`,
-                "ownerId": OWNER_ID,
+                "ownerId": REAL_OWNER_ID,
                 "repo": "https://github.com/hostdeployment-bit/NEEBASE",
                 "envVars": [
                     { "key": "SESSION_ID", "value": sid },
@@ -35,32 +43,21 @@ export default async function handler(req, res) {
         const renderData = await renderResponse.json();
 
         if (renderResponse.ok) {
-            // --- 2. SAVE TO MONGODB ---
+            // --- STEP 3: SAVE TO MONGODB ---
             try {
                 const client = new MongoClient(MONGO_URI);
                 await client.connect();
-                const db = client.db("PopkidHost");
-                const collection = db.collection("deployments");
-                
-                await collection.insertOne({
-                    nickname: name,
-                    phoneNumber: num,
-                    sessionId: sid,
-                    deployDate: new Date(),
-                    renderId: renderData.service.id
+                await client.db("PopkidHost").collection("deployments").insertOne({
+                    nickname: name, phoneNumber: num, sessionId: sid, date: new Date()
                 });
                 await client.close();
-                console.log("✅ Data saved to Cluster0");
-            } catch (dbErr) {
-                console.error("❌ MongoDB Log Error:", dbErr);
-                // We don't stop the response even if DB fails, so the user sees 'Success'
-            }
+            } catch (dbErr) { console.error("DB Log Error:", dbErr); }
 
-            return res.status(200).json({ success: true, message: "Bot Deployed & Logged!" });
+            return res.status(200).json({ success: true, message: "Bot Launched Successfully!" });
         } else {
             return res.status(renderResponse.status).json({ success: false, error: renderData.message });
         }
     } catch (error) {
-        return res.status(500).json({ success: false, error: "System Error" });
+        return res.status(500).json({ success: false, error: error.message });
     }
 }
