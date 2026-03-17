@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     const { name, sid, num } = req.body;
     
     // --- 🔐 YOUR SECURE CREDENTIALS ---
-    const HF_TOKEN = "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"; 
+    const HF_TOKEN = "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"; 
     const MONGO_URI = "mongodb+srv://popkid:taracha2004%3F@cluster0.i50ot50.mongodb.net/?retryWrites=true&w=majority";
     const SPACE_ID = "Popkid-254/Popkid";
     const GITHUB_REPO = "https://github.com/hostdeployment-bit/NEEBASE.git";
